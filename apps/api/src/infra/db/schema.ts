@@ -1,12 +1,12 @@
-import { relations } from 'drizzle-orm';
 import { index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
-export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').notNull().unique(),
-  name: text('name'),
-  imageUrl: text('image_url'),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+// Mirrors Better Auth's "user" table (owned and migrated by apps/web) so Drizzle
+// can build the FK below. apps/api never migrates this table — it's a read-only
+// reference to a table that lives in the same Postgres database but a different
+// workspace's schema. Identity itself (who a JWT's subject claim refers to) is
+// verified against Better Auth's JWKS endpoint, not by querying this table.
+export const authUserMirror = pgTable('user', {
+  id: text('id').primaryKey(),
 });
 
 export const documentStatus = ['pending', 'processing', 'ready', 'failed'] as const;
@@ -16,9 +16,9 @@ export const documents = pgTable(
   'documents',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
+    userId: text('user_id')
       .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+      .references(() => authUserMirror.id, { onDelete: 'cascade' }),
     filename: text('filename').notNull(),
     s3Key: text('s3_key').notNull().unique(),
     sizeBytes: integer('size_bytes').notNull(),
@@ -30,14 +30,3 @@ export const documents = pgTable(
   },
   (table) => [index('documents_user_id_created_at_idx').on(table.userId, table.createdAt.desc())],
 );
-
-export const usersRelations = relations(users, ({ many }) => ({
-  documents: many(documents),
-}));
-
-export const documentsRelations = relations(documents, ({ one }) => ({
-  user: one(users, {
-    fields: [documents.userId],
-    references: [users.id],
-  }),
-}));

@@ -1,33 +1,32 @@
 import type { FastifyInstance } from 'fastify';
 import * as documentsService from './documents.service.js';
-import {
-  createDocumentSchema,
-  documentIdParamsSchema,
-  listDocumentsQuerySchema,
-} from './documents.schemas.js';
+import { createDocumentBodySchema, documentIdParamsSchema } from './documents.schemas.js';
+import { requireAuth, getUserId } from '../../lib/require-auth.js';
 
 export async function documentsRoutes(app: FastifyInstance) {
+  app.addHook('preHandler', requireAuth);
+
   app.post('/documents', async (request, reply) => {
-    const body = createDocumentSchema.parse(request.body);
-    const document = await documentsService.createDocument(body);
+    const body = createDocumentBodySchema.parse(request.body);
+    const document = await documentsService.createDocument({
+      ...body,
+      userId: getUserId(request),
+    });
     return reply.code(201).send(document);
   });
 
   app.get('/documents', async (request) => {
-    const query = listDocumentsQuerySchema.parse(request.query);
-    return documentsService.listDocuments(query.userId);
+    return documentsService.listDocuments(getUserId(request));
   });
 
   app.get('/documents/:id', async (request) => {
     const params = documentIdParamsSchema.parse(request.params);
-    const query = listDocumentsQuerySchema.parse(request.query);
-    return documentsService.getDocument(params.id, query.userId);
+    return documentsService.getDocument(params.id, getUserId(request));
   });
 
   app.delete('/documents/:id', async (request, reply) => {
     const params = documentIdParamsSchema.parse(request.params);
-    const query = listDocumentsQuerySchema.parse(request.query);
-    await documentsService.deleteDocument(params.id, query.userId);
+    await documentsService.deleteDocument(params.id, getUserId(request));
     return reply.code(204).send();
   });
 }

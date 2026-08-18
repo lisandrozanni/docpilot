@@ -6,16 +6,16 @@ if (!process.env.DATABASE_URL) {
 }
 
 export default defineConfig({
-  schema: './src/infra/db/schema.ts',
-  out: './src/infra/db/migrations',
+  schema: './src/lib/db/auth-schema.ts',
+  out: './src/lib/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
     url: process.env.DATABASE_URL,
   },
-  // apps/web has its own drizzle-kit setup against the same database — separate
+  // apps/api has its own drizzle-kit setup against the same database — separate
   // migrations tracking tables so the two workspaces' journals never collide.
   migrations: {
-    schema: 'drizzle_api',
+    schema: 'drizzle_web',
   },
   verbose: true,
   strict: true,

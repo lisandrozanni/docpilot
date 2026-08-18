@@ -8,11 +8,19 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .next"
+    "clean": "rm -rf .next",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "auth:generate": "auth generate --config src/lib/auth/auth.ts --output src/lib/db/auth-schema.ts -y"
   },
   "dependencies": {
     "@docpilot/shared": "*",
+    "better-auth": "^1.7.0",
+    "drizzle-orm": "^0.45.2",
+    "jose": "^6.2.9",
     "next": "^16.3.1",
+    "postgres": "^3.4.9",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
@@ -21,6 +29,8 @@
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.4",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3"
   }
