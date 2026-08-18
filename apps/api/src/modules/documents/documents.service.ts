@@ -1,9 +1,47 @@
-import { NotFoundError } from '../../lib/errors.js';
+import { randomUUID } from 'node:crypto';
+import { NotFoundError, ConflictError } from '../../lib/errors.js';
+import { buildS3Key, createPresignedUploadUrl, objectExists } from '../../infra/s3.js';
 import * as documentsRepository from './documents.repository.js';
-import type { CreateDocumentInput } from './documents.schemas.js';
+import type { RequestUploadInput } from './documents.schemas.js';
 
-export async function createDocument(input: CreateDocumentInput) {
-  return documentsRepository.insertDocument(input);
+export async function requestUpload(input: RequestUploadInput) {
+  // The document id is generated here (not left to the DB default) so the S3 key
+  // can be derived from it before the row exists — s3Key is never client-supplied,
+  // which would otherwise let a client point an upload at an arbitrary key.
+  const id = randomUUID();
+  const s3Key = buildS3Key(input.userId, id);
+
+  const document = await documentsRepository.insertDocument({
+    id,
+    userId: input.userId,
+    filename: input.filename,
+    s3Key,
+    sizeBytes: input.sizeBytes,
+  });
+
+  const uploadUrl = await createPresignedUploadUrl(s3Key, input.contentType);
+
+  return { document, uploadUrl };
+}
+
+export async function confirmUpload(id: string, userId: string) {
+  const document = await documentsRepository.findDocumentById(id, userId);
+
+  if (!document) {
+    throw new NotFoundError(`Document ${id} not found`);
+  }
+
+  if (document.status !== 'pending') {
+    throw new ConflictError(`Document ${id} is not pending upload`);
+  }
+
+  const exists = await objectExists(document.s3Key);
+
+  if (!exists) {
+    throw new ConflictError('Upload not found in S3 — the PUT may not have completed');
+  }
+
+  return documentsRepository.updateDocumentStatus(id, userId, 'processing');
 }
 
 export async function listDocuments(userId: string) {

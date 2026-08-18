@@ -1,4 +1,5 @@
 import { DocumentList } from '@/features/documents/components/document-list';
+import { UploadDropzone } from '@/features/documents/components/upload-dropzone';
 import type { DocumentCardData } from '@/features/documents/components/document-card';
 import { apiFetch } from '@/lib/api-client';
 
@@ -11,6 +12,9 @@ export default async function DocumentsPage() {
   return (
     <div>
       <h1 className="text-2xl font-semibold text-text">Documents</h1>
+      <div className="mt-6">
+        <UploadDropzone />
+      </div>
       <div className="mt-6">
         <DocumentList documents={documents} />
       </div>

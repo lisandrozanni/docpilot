@@ -1,16 +1,9 @@
 import { z } from 'zod';
+import { uploadRequestSchema } from '@docpilot/shared';
 import { documentStatus } from '../../infra/db/schema.js';
 
-export const createDocumentBodySchema = z.object({
-  filename: z.string().min(1).max(255),
-  s3Key: z.string().min(1),
-  sizeBytes: z
-    .number()
-    .int()
-    .positive()
-    .max(10 * 1024 * 1024),
-});
-export type CreateDocumentInput = z.infer<typeof createDocumentBodySchema> & { userId: string };
+export const requestUploadBodySchema = uploadRequestSchema;
+export type RequestUploadInput = z.infer<typeof requestUploadBodySchema> & { userId: string };
 
 export const documentIdParamsSchema = z.object({
   id: z.uuid(),

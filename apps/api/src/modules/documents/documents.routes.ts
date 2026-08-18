@@ -1,18 +1,20 @@
 import type { FastifyInstance } from 'fastify';
 import * as documentsService from './documents.service.js';
-import { createDocumentBodySchema, documentIdParamsSchema } from './documents.schemas.js';
+import { requestUploadBodySchema, documentIdParamsSchema } from './documents.schemas.js';
 import { requireAuth, getUserId } from '../../lib/require-auth.js';
 
 export async function documentsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);
 
-  app.post('/documents', async (request, reply) => {
-    const body = createDocumentBodySchema.parse(request.body);
-    const document = await documentsService.createDocument({
-      ...body,
-      userId: getUserId(request),
-    });
-    return reply.code(201).send(document);
+  app.post('/documents/upload-url', async (request, reply) => {
+    const body = requestUploadBodySchema.parse(request.body);
+    const result = await documentsService.requestUpload({ ...body, userId: getUserId(request) });
+    return reply.code(201).send(result);
+  });
+
+  app.post('/documents/:id/confirm', async (request) => {
+    const params = documentIdParamsSchema.parse(request.params);
+    return documentsService.confirmUpload(params.id, getUserId(request));
   });
 
   app.get('/documents', async (request) => {
