@@ -5,6 +5,7 @@ import type { Chunk } from '../../infra/chunking.js';
 
 interface ChunkWithPage extends Chunk {
   pageNumber: number | null;
+  embedding: number[];
 }
 
 export async function replaceChunksForDocument(
@@ -27,6 +28,7 @@ export async function replaceChunksForDocument(
         content: chunk.content,
         chunkIndex: chunk.chunkIndex,
         pageNumber: chunk.pageNumber,
+        embedding: chunk.embedding,
       })),
     );
   });

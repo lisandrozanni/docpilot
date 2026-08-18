@@ -1,5 +1,6 @@
 import { NotFoundError, ConflictError } from '../../lib/errors.js';
 import { streamAnswer, type ChatMessage } from '../../infra/llm.js';
+import { embedQuery } from '../../infra/embeddings.js';
 import * as documentsRepository from '../documents/documents.repository.js';
 import * as chatRepository from './chat.repository.js';
 
@@ -35,17 +36,18 @@ export async function askQuestion(input: AskQuestionInput): Promise<AskQuestionR
     throw new NotFoundError(`Conversation ${input.conversationId} not found`);
   }
 
-  const [chunks, priorMessages] = await Promise.all([
-    chatRepository.findChunksByDocumentId(input.documentId),
+  const [queryEmbedding, priorMessages] = await Promise.all([
+    embedQuery(input.question),
     chatRepository.findMessagesByConversationId(conversation.id),
   ]);
 
-  // No RAG yet (Etapa 9 adds embeddings + top-K retrieval) — every chunk goes
-  // into the prompt. This is the "meter el documento entero" side of the
-  // trade-off the plan calls out: fine for the small test PDFs this project
-  // uses, but doesn't scale to large documents, which is exactly why Etapa 9
-  // exists.
-  const documentContext = chunks.map((chunk) => chunk.content).join('\n\n');
+  // Top-K retrieval (Etapa 9), replacing the "whole document in the prompt"
+  // approach from Etapa 8. Trade-off worth being honest about: for a document
+  // small enough to fit entirely in context, embedding + retrieval adds cost
+  // and a chance of missing something a full-context read wouldn't miss — RAG
+  // earns its complexity once documents are too large to just paste in.
+  const relevantChunks = await chatRepository.findRelevantChunks(input.documentId, queryEmbedding);
+  const documentContext = relevantChunks.map((chunk) => chunk.content).join('\n\n');
 
   await chatRepository.insertMessage({
     conversationId: conversation.id,

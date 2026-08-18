@@ -1,4 +1,17 @@
-import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import {
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  vector,
+} from 'drizzle-orm/pg-core';
+
+// voyage-3.5 (Voyage AI) — Anthropic has no first-party embeddings API, and
+// Voyage is the provider they recommend in their own docs.
+export const EMBEDDING_DIMENSIONS = 1024;
 
 // Mirrors Better Auth's "user" table (owned and migrated by apps/web) so Drizzle
 // can build the FK below. apps/api never migrates this table — it's a read-only
@@ -31,8 +44,6 @@ export const documents = pgTable(
   (table) => [index('documents_user_id_created_at_idx').on(table.userId, table.createdAt.desc())],
 );
 
-// embedding vector(1536) arrives in Etapa 9 — this table exists now only to hold
-// chunked text, not yet to support similarity search.
 export const documentChunks = pgTable(
   'document_chunks',
   {
@@ -43,6 +54,10 @@ export const documentChunks = pgTable(
     content: text('content').notNull(),
     chunkIndex: integer('chunk_index').notNull(),
     pageNumber: integer('page_number'),
+    // Nullable: populated by the worker right after the chunk is inserted, in
+    // a separate step (embedding calls are a network round-trip, batched
+    // across all of a document's chunks — see infra/embeddings.ts).
+    embedding: vector('embedding', { dimensions: EMBEDDING_DIMENSIONS }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -53,6 +68,14 @@ export const documentChunks = pgTable(
     uniqueIndex('document_chunks_document_id_chunk_index_uidx').on(
       table.documentId,
       table.chunkIndex,
+    ),
+    // HNSW: approximate nearest-neighbor search. Trade-off is recall vs speed —
+    // with the small chunk counts this project's test PDFs produce, a sequential
+    // scan would be just as fast; the index earns its cost once chunk counts
+    // grow into the thousands+.
+    index('document_chunks_embedding_hnsw_idx').using(
+      'hnsw',
+      table.embedding.op('vector_cosine_ops'),
     ),
   ],
 );

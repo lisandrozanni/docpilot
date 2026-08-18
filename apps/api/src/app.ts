@@ -25,8 +25,13 @@ export function buildApp() {
       });
     }
 
+    // Only genuine Fastify-framework errors (malformed JSON body, oversized
+    // payload, etc.) are safe to forward verbatim — they're marked with a
+    // "FST_" coded `code`. A third-party SDK error (e.g. Voyage, S3) can also
+    // happen to carry a `.statusCode` under 500, but its `.message` is that
+    // service's internal error detail, not something meant for our clients.
     const fastifyError = error as FastifyError;
-    if (fastifyError.statusCode !== undefined && fastifyError.statusCode < 500) {
+    if (fastifyError.statusCode !== undefined && fastifyError.code?.startsWith('FST_')) {
       return reply.code(fastifyError.statusCode).send({
         code: fastifyError.code,
         message: fastifyError.message,

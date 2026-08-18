@@ -2,6 +2,7 @@ import { logger } from '../../lib/logger.js';
 import { downloadObject } from '../../infra/s3.js';
 import { extractPdfText } from '../../infra/pdf.js';
 import { chunkText } from '../../infra/chunking.js';
+import { embedDocumentChunks } from '../../infra/embeddings.js';
 import { replaceChunksForDocument } from './chunks.repository.js';
 import * as documentsRepository from './documents.repository.js';
 
@@ -30,7 +31,21 @@ export async function processDocument(documentId: string, userId: string): Promi
     // per page — reindex sequentially across the whole document.
     const reindexed = chunks.map((chunk, index) => ({ ...chunk, chunkIndex: index }));
 
-    await replaceChunksForDocument(documentId, reindexed);
+    // One batched call for all of a document's chunks rather than one call per
+    // chunk — Voyage accepts up to 128 inputs per request, and batching avoids
+    // paying per-request latency/rate-limit overhead once per chunk.
+    const embeddings = await embedDocumentChunks(reindexed.map((chunk) => chunk.content));
+
+    if (embeddings.length !== reindexed.length) {
+      throw new Error(`Expected ${reindexed.length} embeddings, got ${embeddings.length}`);
+    }
+
+    const withEmbeddings = reindexed.map((chunk, index) => ({
+      ...chunk,
+      embedding: embeddings[index] ?? [],
+    }));
+
+    await replaceChunksForDocument(documentId, withEmbeddings);
     await documentsRepository.updateDocumentPageCount(documentId, extracted.pageCount);
     await documentsRepository.updateDocumentStatus(documentId, userId, 'ready');
   } catch (error) {

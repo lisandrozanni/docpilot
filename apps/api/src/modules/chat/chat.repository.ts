@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, cosineDistance, eq, sql } from 'drizzle-orm';
 import { db } from '../../infra/db/client.js';
 import {
   conversations,
@@ -43,10 +43,21 @@ export async function insertMessage(input: InsertMessageInput) {
   return message;
 }
 
-export async function findChunksByDocumentId(documentId: string) {
+const TOP_K = 5;
+
+export async function findRelevantChunks(documentId: string, queryEmbedding: number[]) {
+  // cosineDistance = 1 - cosine similarity, so ordering ascending by distance
+  // is the same as ordering descending by similarity — closest matches first.
+  const distance = cosineDistance(documentChunks.embedding, queryEmbedding);
+
   return db
-    .select({ content: documentChunks.content, chunkIndex: documentChunks.chunkIndex })
+    .select({
+      content: documentChunks.content,
+      chunkIndex: documentChunks.chunkIndex,
+      similarity: sql<number>`1 - (${distance})`,
+    })
     .from(documentChunks)
     .where(eq(documentChunks.documentId, documentId))
-    .orderBy(asc(documentChunks.chunkIndex));
+    .orderBy(distance)
+    .limit(TOP_K);
 }
