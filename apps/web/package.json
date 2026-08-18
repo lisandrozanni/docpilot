@@ -1,0 +1,14 @@
+{
+  "name": "@docpilot/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"Next.js dev server arrives in Etapa 3\"",
+    "build": "tsc --build",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@docpilot/shared": "*"
+  }
+}
