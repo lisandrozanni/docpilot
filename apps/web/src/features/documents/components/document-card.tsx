@@ -1,3 +1,5 @@
+import { Button } from '@/components/ui/button';
+
 export interface DocumentCardData {
   id: string;
   filename: string;
@@ -20,7 +22,13 @@ const statusClasses: Record<DocumentCardData['status'], string> = {
   failed: 'bg-danger/10 text-danger',
 };
 
-export function DocumentCard({ document }: { document: DocumentCardData }) {
+interface DocumentCardProps {
+  document: DocumentCardData;
+  onDelete: () => void;
+  isDeleting: boolean;
+}
+
+export function DocumentCard({ document, onDelete, isDeleting }: DocumentCardProps) {
   return (
     <li className="flex items-center justify-between rounded-lg border border-border bg-surface p-4 transition-colors duration-150 ease-standard hover:border-primary">
       <div>
@@ -29,11 +37,21 @@ export function DocumentCard({ document }: { document: DocumentCardData }) {
           {document.pageCount ? `${document.pageCount} pages` : 'Page count pending'}
         </p>
       </div>
-      <span
-        className={`rounded-md px-2.5 py-1 text-xs font-medium ${statusClasses[document.status]}`}
-      >
-        {statusLabel[document.status]}
-      </span>
+      <div className="flex items-center gap-3">
+        <span
+          className={`rounded-md px-2.5 py-1 text-xs font-medium ${statusClasses[document.status]}`}
+        >
+          {statusLabel[document.status]}
+        </span>
+        <Button
+          variant="ghost"
+          onClick={onDelete}
+          disabled={isDeleting}
+          aria-label={`Delete ${document.filename}`}
+        >
+          {isDeleting ? 'Deleting…' : 'Delete'}
+        </Button>
+      </div>
     </li>
   );
 }

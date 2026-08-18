@@ -3,15 +3,16 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { uploadFormSchema, type UploadFormValues } from '../schemas';
 import { requestUpload, confirmUpload } from '../actions';
+import { documentsQueryKey } from '../hooks/use-documents';
 import { Button } from '@/components/ui/button';
 
 type UploadState = 'idle' | 'uploading' | 'confirming' | 'error';
 
 export function UploadDropzone() {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [state, setState] = useState<UploadState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [inputKey, setInputKey] = useState(0);
@@ -48,7 +49,7 @@ export function UploadDropzone() {
       setState('confirming');
       await confirmUpload(documentId);
 
-      router.refresh();
+      await queryClient.invalidateQueries({ queryKey: documentsQueryKey });
       setState('idle');
       setInputKey((key) => key + 1);
     } catch (error) {

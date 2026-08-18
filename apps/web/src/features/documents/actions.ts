@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 import { uploadRequestSchema, uploadResponseSchema, type UploadRequest } from '@docpilot/shared';
 import { requireSession } from '@/features/auth/lib/session';
 import { apiFetch } from '@/lib/api-client';
@@ -32,6 +33,22 @@ export async function confirmUpload(documentId: string) {
 
   if (!response.ok) {
     throw new Error(`Failed to confirm upload (${response.status})`);
+  }
+
+  revalidatePath('/documents');
+}
+
+export async function deleteDocument(documentId: string) {
+  // Authentication (requireSession) and authorization (apps/api scoping the
+  // delete to the JWT's own userId, returning 404 for another user's document)
+  // are two separate checks — both are required, neither substitutes the other.
+  await requireSession();
+  const id = z.uuid().parse(documentId);
+
+  const response = await apiFetch(`/documents/${id}`, { method: 'DELETE' });
+
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Failed to delete document (${response.status})`);
   }
 
   revalidatePath('/documents');

@@ -4,10 +4,11 @@ import type { DocumentCardData } from '@/features/documents/components/document-
 import { apiFetch } from '@/lib/api-client';
 
 export default async function DocumentsPage() {
-  // Polling, caching, and optimistic updates (TanStack Query) arrive in Etapa 6.
-  // This proves the auth chain end-to-end: session -> JWT -> verified API call.
+  // RSC does the first fetch (already authenticated via apiFetch); the client
+  // takes it as initialData so TanStack Query doesn't refetch on mount, then
+  // owns polling/mutations from there.
   const response = await apiFetch('/documents');
-  const documents = (await response.json()) as DocumentCardData[];
+  const initialDocuments = (await response.json()) as DocumentCardData[];
 
   return (
     <div>
@@ -16,7 +17,7 @@ export default async function DocumentsPage() {
         <UploadDropzone />
       </div>
       <div className="mt-6">
-        <DocumentList documents={documents} />
+        <DocumentList initialDocuments={initialDocuments} />
       </div>
     </div>
   );
