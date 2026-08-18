@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  # Real-shaped but fake values — nothing in lint/typecheck/build/unit-test
+  # actually calls Google/AWS/Anthropic/Voyage, but each workspace's Zod env
+  # schema (see lib/env.ts) requires these to be present and non-empty just
+  # to construct the app, matching local .env.example placeholders.
+  DATABASE_URL: postgresql://docpilot:docpilot_ci_password@localhost:5432/docpilot
+  AUTH_JWKS_URL: http://localhost:3000/api/auth/jwks
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: ci-placeholder-access-key-id
+  AWS_SECRET_ACCESS_KEY: ci-placeholder-secret-access-key
+  S3_BUCKET_NAME: docpilot-ci-placeholder
+  ANTHROPIC_API_KEY: sk-ant-ci-placeholder-key
+  VOYAGE_API_KEY: pa-ci-placeholder-key
+  BETTER_AUTH_SECRET: ci-placeholder-secret-not-used-for-real-auth
+  BETTER_AUTH_URL: http://localhost:3000
+  GOOGLE_CLIENT_ID: ci-placeholder-client-id.apps.googleusercontent.com
+  GOOGLE_CLIENT_SECRET: ci-placeholder-client-secret
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run test
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Testcontainers starts its own ephemeral Postgres container per run —
+      # no `services:` block needed here, unlike a typical GitHub Actions
+      # Postgres setup. The runner's Docker daemon (pre-installed on
+      # ubuntu-latest) is what Testcontainers talks to.
+      - run: npm run test:integration --workspace=@docpilot/api
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, unit-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace=@docpilot/shared
+      - run: npm run build --workspace=@docpilot/api
+      - run: npm run build --workspace=@docpilot/web
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    needs: [build]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: docpilot
+          POSTGRES_PASSWORD: docpilot_ci_password
+          POSTGRES_DB: docpilot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U docpilot -d docpilot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install chromium --with-deps
+        working-directory: apps/web
+      - run: npm run db:migrate --workspace=@docpilot/web
+      - run: npm run test:e2e --workspace=@docpilot/web
+        env:
+          CI: true

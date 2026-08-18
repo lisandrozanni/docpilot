@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "tsc --build && npm run typecheck --workspace=@docpilot/web",
+    "typecheck": "tsc --build && npm run typecheck --workspace=@docpilot/api && npm run typecheck --workspace=@docpilot/web",
+    "test": "npm run test --workspaces --if-present",
     "prepare": "husky"
   },
   "devDependencies": {
