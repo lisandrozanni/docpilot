@@ -4,6 +4,7 @@ import { logger } from './lib/logger.js';
 import { AppError } from './lib/errors.js';
 import { healthRoutes } from './modules/health/health.routes.js';
 import { documentsRoutes } from './modules/documents/documents.routes.js';
+import { chatRoutes } from './modules/chat/chat.routes.js';
 
 export function buildApp() {
   const app = Fastify({ loggerInstance: logger });
@@ -41,6 +42,7 @@ export function buildApp() {
 
   app.register(healthRoutes);
   app.register(documentsRoutes);
+  app.register(chatRoutes);
 
   return app;
 }

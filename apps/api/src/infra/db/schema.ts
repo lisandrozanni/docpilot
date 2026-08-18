@@ -56,3 +56,46 @@ export const documentChunks = pgTable(
     ),
   ],
 );
+
+export const conversations = pgTable(
+  'conversations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => authUserMirror.id, { onDelete: 'cascade' }),
+    documentId: uuid('document_id')
+      .notNull()
+      .references(() => documents.id, { onDelete: 'cascade' }),
+    title: text('title'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('conversations_user_id_created_at_idx').on(table.userId, table.createdAt.desc()),
+  ],
+);
+
+export const messageRole = ['user', 'assistant'] as const;
+export type MessageRole = (typeof messageRole)[number];
+
+export const messages = pgTable(
+  'messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: messageRole }).notNull(),
+    content: text('content').notNull(),
+    tokenCount: integer('token_count'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    // ASC (not DESC like the other created_at indexes): messages render in
+    // chronological order, oldest first — this index serves that scan directly.
+    index('messages_conversation_id_created_at_idx').on(
+      table.conversationId,
+      table.createdAt.asc(),
+    ),
+  ],
+);
