@@ -74,6 +74,8 @@ export function UploadDropzone() {
         type="file"
         accept="application/pdf"
         disabled={isBusy}
+        aria-invalid={errors.file ? true : undefined}
+        aria-describedby={errors.file ? 'pdf-upload-error' : undefined}
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) {
@@ -82,8 +84,16 @@ export function UploadDropzone() {
         }}
         className="mt-2 block w-full text-sm text-text-muted file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
       />
-      {errors.file && <p className="mt-2 text-sm text-danger">{errors.file.message}</p>}
-      {errorMessage && <p className="mt-2 text-sm text-danger">{errorMessage}</p>}
+      {errors.file && (
+        <p id="pdf-upload-error" className="mt-2 text-sm text-danger">
+          {errors.file.message}
+        </p>
+      )}
+      {errorMessage && (
+        <p role="alert" className="mt-2 text-sm text-danger">
+          {errorMessage}
+        </p>
+      )}
       <div className="mt-4">
         <Button type="submit" disabled={isBusy}>
           {state === 'uploading' && 'Uploading…'}

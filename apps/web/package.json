@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "analyze": "next experimental-analyze -o",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .next",

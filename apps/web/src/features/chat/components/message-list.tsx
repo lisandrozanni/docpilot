@@ -10,7 +10,11 @@ export function MessageList({ messages }: { messages: ChatMessage[] }) {
   }
 
   return (
-    <ul className="flex flex-1 flex-col gap-4 overflow-y-auto py-4">
+    <ul
+      aria-live="polite"
+      aria-label="Conversation"
+      className="flex flex-1 flex-col gap-4 overflow-y-auto py-4"
+    >
       {messages.map((message) => (
         <li
           key={message.id}

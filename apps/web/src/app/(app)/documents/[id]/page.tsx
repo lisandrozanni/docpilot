@@ -1,6 +1,13 @@
 import { notFound } from 'next/navigation';
-import { DocumentChat } from '@/features/chat/components/document-chat';
+import dynamic from 'next/dynamic';
 import { apiFetch } from '@/lib/api-client';
+
+// Deferred: a document in "processing" or "failed" status never renders the
+// chat at all, so its JS (RHF, the streaming hook) has no reason to be in
+// that page's initial bundle for those states.
+const DocumentChat = dynamic(() =>
+  import('@/features/chat/components/document-chat').then((mod) => mod.DocumentChat),
+);
 
 interface DocumentResponse {
   id: string;

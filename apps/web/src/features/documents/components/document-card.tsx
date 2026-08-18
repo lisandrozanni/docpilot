@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 export interface DocumentCardData {
@@ -30,13 +31,13 @@ interface DocumentCardProps {
 
 export function DocumentCard({ document, onDelete, isDeleting }: DocumentCardProps) {
   return (
-    <li className="flex items-center justify-between rounded-lg border border-border bg-surface p-4 transition-colors duration-150 ease-standard hover:border-primary">
-      <div>
-        <p className="font-medium text-text">{document.filename}</p>
+    <li className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4 transition-colors duration-150 ease-standard hover:border-primary">
+      <Link href={`/documents/${document.id}`} className="min-w-0 flex-1">
+        <p className="truncate font-medium text-text">{document.filename}</p>
         <p className="text-sm text-text-muted">
           {document.pageCount ? `${document.pageCount} pages` : 'Page count pending'}
         </p>
-      </div>
+      </Link>
       <div className="flex items-center gap-3">
         <span
           className={`rounded-md px-2.5 py-1 text-xs font-medium ${statusClasses[document.status]}`}
