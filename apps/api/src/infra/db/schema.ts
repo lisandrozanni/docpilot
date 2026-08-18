@@ -1,4 +1,4 @@
-import { index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 // Mirrors Better Auth's "user" table (owned and migrated by apps/web) so Drizzle
 // can build the FK below. apps/api never migrates this table — it's a read-only
@@ -29,4 +29,30 @@ export const documents = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index('documents_user_id_created_at_idx').on(table.userId, table.createdAt.desc())],
+);
+
+// embedding vector(1536) arrives in Etapa 9 — this table exists now only to hold
+// chunked text, not yet to support similarity search.
+export const documentChunks = pgTable(
+  'document_chunks',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    documentId: uuid('document_id')
+      .notNull()
+      .references(() => documents.id, { onDelete: 'cascade' }),
+    content: text('content').notNull(),
+    chunkIndex: integer('chunk_index').notNull(),
+    pageNumber: integer('page_number'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('document_chunks_document_id_idx').on(table.documentId),
+    // Reprocessing a document must not silently duplicate its chunks — this
+    // constraint is what makes the delete-then-reinsert idempotency in the
+    // worker enforced at the database level, not just by convention.
+    uniqueIndex('document_chunks_document_id_chunk_index_uidx').on(
+      table.documentId,
+      table.chunkIndex,
+    ),
+  ],
 );

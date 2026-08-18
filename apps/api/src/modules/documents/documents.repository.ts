@@ -43,6 +43,26 @@ export async function updateDocumentStatus(id: string, userId: string, status: D
   return updated;
 }
 
+export async function updateDocumentPageCount(id: string, pageCount: number) {
+  const [updated] = await db
+    .update(documents)
+    .set({ pageCount, updatedAt: new Date() })
+    .where(eq(documents.id, id))
+    .returning();
+
+  return updated;
+}
+
+export async function markDocumentFailed(id: string, userId: string, errorMessage: string) {
+  const [updated] = await db
+    .update(documents)
+    .set({ status: 'failed', errorMessage, updatedAt: new Date() })
+    .where(and(eq(documents.id, id), eq(documents.userId, userId)))
+    .returning();
+
+  return updated;
+}
+
 export async function deleteDocumentById(id: string, userId: string) {
   const [deleted] = await db
     .delete(documents)

@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { logger } from '../../lib/logger.js';
 import { NotFoundError, ConflictError } from '../../lib/errors.js';
 import { buildS3Key, createPresignedUploadUrl, objectExists } from '../../infra/s3.js';
 import * as documentsRepository from './documents.repository.js';
+import { processDocument } from './documents.worker.js';
 import type { RequestUploadInput } from './documents.schemas.js';
 
 export async function requestUpload(input: RequestUploadInput) {
@@ -41,7 +43,16 @@ export async function confirmUpload(id: string, userId: string) {
     throw new ConflictError('Upload not found in S3 — the PUT may not have completed');
   }
 
-  return documentsRepository.updateDocumentStatus(id, userId, 'processing');
+  const updated = await documentsRepository.updateDocumentStatus(id, userId, 'processing');
+
+  // Deliberately not awaited: the HTTP response confirms the upload was
+  // accepted, not that processing finished. The client learns the outcome by
+  // polling document.status (ready/failed) — see Etapa 6.
+  processDocument(id, userId).catch((error: unknown) => {
+    logger.error({ documentId: id, error }, 'processDocument threw outside its own try/catch');
+  });
+
+  return updated;
 }
 
 export async function listDocuments(userId: string) {

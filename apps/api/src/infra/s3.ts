@@ -1,4 +1,9 @@
-import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  HeadObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '../lib/env.js';
 
@@ -27,6 +32,19 @@ export async function createPresignedUploadUrl(
   });
 
   return getSignedUrl(s3Client, command, { expiresIn: UPLOAD_URL_EXPIRY_SECONDS });
+}
+
+export async function downloadObject(s3Key: string): Promise<Buffer> {
+  const response = await s3Client.send(
+    new GetObjectCommand({ Bucket: env.S3_BUCKET_NAME, Key: s3Key }),
+  );
+
+  if (!response.Body) {
+    throw new Error(`S3 object ${s3Key} has no body`);
+  }
+
+  const bytes = await response.Body.transformToByteArray();
+  return Buffer.from(bytes);
 }
 
 export async function objectExists(s3Key: string): Promise<boolean> {
