@@ -4,11 +4,24 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "echo \"Next.js dev server arrives in Etapa 3\"",
-    "build": "tsc --build",
-    "clean": "rm -rf dist"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .next"
   },
   "dependencies": {
-    "@docpilot/shared": "*"
+    "@docpilot/shared": "*",
+    "next": "^16.3.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.4",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3"
   }
 }
