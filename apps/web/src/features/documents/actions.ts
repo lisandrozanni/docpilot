@@ -3,13 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { uploadRequestSchema, uploadResponseSchema, type UploadRequest } from '@docpilot/shared';
-import { requireSession } from '@/features/auth/lib/session';
 import { apiFetch } from '@/lib/api-client';
 
 export async function requestUpload(input: UploadRequest) {
-  // Server Actions are public HTTP endpoints — session and input are re-validated
-  // here regardless of any client-side (RHF/Zod) validation already done.
-  await requireSession();
+  // Server Actions are public HTTP endpoints — input is re-validated here
+  // regardless of any client-side (RHF/Zod) validation already done.
   const body = uploadRequestSchema.parse(input);
 
   const response = await apiFetch('/documents/upload-url', {
@@ -27,8 +25,6 @@ export async function requestUpload(input: UploadRequest) {
 }
 
 export async function confirmUpload(documentId: string) {
-  await requireSession();
-
   const response = await apiFetch(`/documents/${documentId}/confirm`, { method: 'POST' });
 
   if (!response.ok) {
@@ -39,10 +35,6 @@ export async function confirmUpload(documentId: string) {
 }
 
 export async function deleteDocument(documentId: string) {
-  // Authentication (requireSession) and authorization (apps/api scoping the
-  // delete to the JWT's own userId, returning 404 for another user's document)
-  // are two separate checks — both are required, neither substitutes the other.
-  await requireSession();
   const id = z.uuid().parse(documentId);
 
   const response = await apiFetch(`/documents/${id}`, { method: 'DELETE' });

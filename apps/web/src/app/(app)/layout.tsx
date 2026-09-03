@@ -1,10 +1,6 @@
 import Link from 'next/link';
-import { requireSession } from '@/features/auth/lib/session';
-import { SignOutButton } from '@/features/auth/components/sign-out-button';
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await requireSession();
-
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-surface">
@@ -19,10 +15,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             >
               Documents
             </Link>
-            <span className="hidden truncate text-sm text-text-muted sm:inline">
-              {session.user.email}
-            </span>
-            <SignOutButton />
           </nav>
         </div>
       </header>

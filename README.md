@@ -6,13 +6,15 @@ non-obvious choice below has a reason and a trade-off attached, including what w
 left out.
 
 **Stack:** Next.js 16 (BFF) · Fastify (API) · PostgreSQL 17 + pgvector · Drizzle ORM ·
-Better Auth (Google OAuth) · Claude Opus 5 (streaming Q&A) · Voyage AI (embeddings) · AWS S3
-(presigned uploads).
+Claude Opus 5 (streaming Q&A) · Voyage AI (embeddings) · AWS S3 (presigned uploads).
+
+There is no login — the app runs as a single fixed user. Authentication was deliberately removed
+(see [Deliberately not included](#deliberately-not-included)).
 
 ## How it works
 
 ```
-Browser ──Server Actions/fetch──▶ Next.js (BFF) ──JWT (JWKS)──▶ Fastify API
+Browser ──Server Actions/fetch──▶ Next.js (BFF) ────────────▶ Fastify API
                                                                      │
                                           ┌──────────────┬──────────┼──────────┐
                                           ▼              ▼          ▼          ▼
@@ -20,9 +22,8 @@ Browser ──Server Actions/fetch──▶ Next.js (BFF) ──JWT (JWKS)──
                                      + pgvector
 ```
 
-- **Next.js is a BFF, not just a frontend.** It owns the session (Better Auth) and proxies
-  authenticated calls to the API — the browser never talks to Fastify or S3 directly, and never
-  holds AWS credentials.
+- **Next.js is a BFF, not just a frontend.** It proxies calls to the API — the browser never
+  talks to Fastify or S3 directly, and never holds AWS credentials.
 - **Uploads go straight to S3.** The API only issues a presigned PUT URL; the file bytes never
   pass through either server.
 - **RAG, not "paste the whole document in."** Each PDF is chunked, embedded with Voyage AI, and
@@ -34,8 +35,8 @@ Browser ──Server Actions/fetch──▶ Next.js (BFF) ──JWT (JWKS)──
 
 ## Getting started
 
-**Prerequisites:** Node 22+ (see `.nvmrc`), Docker, and API keys for Google OAuth, AWS S3,
-Anthropic, and Voyage AI (see [What you'll need](#what-youll-need) below).
+**Prerequisites:** Node 22+ (see `.nvmrc`), Docker, and API keys for AWS S3, Anthropic, and
+Voyage AI (see [What you'll need](#what-youll-need) below).
 
 ```bash
 git clone git@github.com:lisandrozanni/docpilot.git
@@ -48,48 +49,45 @@ docker compose up -d
 # Configure each workspace's environment
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
-# fill in both .env files — see the table below for where each key comes from
+# fill in apps/api/.env — see the table below for where each key comes from
 
-# Apply database migrations (api owns documents/chunks, web owns auth tables)
+# Apply database migrations
 npm run db:migrate --workspace=@docpilot/api
-npm run db:migrate --workspace=@docpilot/web
 
 # Run both services
 npm run dev --workspace=@docpilot/api   # http://localhost:3001
 npm run dev --workspace=@docpilot/web   # http://localhost:3000
 ```
 
-Open `http://localhost:3000` — you'll be redirected to `/login`.
+Open `http://localhost:3000` — you'll land straight on `/documents`, no login required.
 
 ### What you'll need
 
 | Variable                                                         | Where to get it                                                                                                                                                           |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`                      | Google Cloud Console → APIs & Services → Credentials → OAuth client ID (type: Web application). Redirect URI: `http://localhost:3000/api/auth/callback/google`            |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `S3_BUCKET_NAME` | An S3 bucket + an IAM user scoped to `s3:PutObject`/`s3:GetObject` on that bucket only (see `docker-compose.yml`'s neighbor, `apps/api/.env.example`, for the full shape) |
 | `ANTHROPIC_API_KEY`                                              | [console.anthropic.com](https://console.anthropic.com) → API Keys                                                                                                         |
 | `VOYAGE_API_KEY`                                                 | [voyageai.com](https://www.voyageai.com) → Dashboard → API Keys                                                                                                           |
-| `BETTER_AUTH_SECRET`                                             | Any long random string, e.g. `openssl rand -base64 32`                                                                                                                    |
 
-Every one of these is validated at boot with a Zod schema (`lib/env.ts` in each workspace) — the
-app fails fast with a clear error instead of a confusing runtime crash three requests in.
+Every one of these is validated at boot with a Zod schema (`apps/api/src/lib/env.ts`) — the app
+fails fast with a clear error instead of a confusing runtime crash three requests in.
 
 ## Project structure
 
 ```
 docpilot/
 ├── apps/
-│   ├── web/                 Next.js 16 (App Router) — BFF, session, UI
+│   ├── web/                 Next.js 16 (App Router) — BFF, UI
 │   │   └── src/
-│   │       ├── app/         routes only — (auth)/login, (app)/documents, api/*
-│   │       ├── features/    feature folders: auth, documents, chat
+│   │       ├── app/         routes only — (app)/documents, api/*
+│   │       ├── features/    feature folders: documents, chat
 │   │       ├── components/  shared UI primitives + providers
-│   │       └── lib/         auth, db client (Better Auth's own schema), api-client
+│   │       └── lib/         api-client
 │   └── api/                 Fastify — business logic, orchestration
 │       └── src/
 │           ├── modules/     routes → service → repository, per domain
 │           ├── infra/       db, s3, llm (Claude), embeddings (Voyage), pdf chunking
-│           └── lib/         env, errors, logger, auth (JWKS verification)
+│           └── lib/         env, errors, logger, auth (fixed userId, no login)
 ├── packages/
 │   └── shared/               Zod schemas shared between web, api, and RHF forms
 ├── docker-compose.yml         Postgres 17 + pgvector, dev only
@@ -114,8 +112,7 @@ npm run test:e2e --workspace=@docpilot/web           # Playwright, real browser
   applies actual migrations against it; this is what catches a broken constraint or index that a
   mocked repository never would.
 - **E2E** — Playwright against a real browser, scoped to what's verifiable without live
-  Google/AWS/Anthropic/Voyage credentials (the unauthenticated redirect, layout, and error
-  states).
+  AWS/Anthropic/Voyage credentials (routing, layout, and error states).
 
 CI (`.github/workflows/ci.yml`) runs lint/typecheck/unit in parallel, then integration, then a
 production build, then e2e — each stage only starts once the ones it depends on are green.
@@ -131,14 +128,6 @@ A few choices worth being able to defend, briefly:
   demonstrating a layered backend, not by dogma.
 - **Drizzle over Prisma.** Drizzle's SQL is close to 1:1 with what actually runs — the explicit
   goal was learning real PostgreSQL, not having an ORM DSL abstract it away.
-- **Two separate Postgres schemas, two Drizzle clients.** Better Auth (in `apps/web`) owns
-  `user`/`session`/`account`/`verification` and migrates them independently from `apps/api`'s
-  `documents`/`document_chunks`. `apps/api` holds a read-only "mirror" table just to build its
-  foreign key — it never migrates the real one. Coupling two workspaces' migration histories to
-  the same table was the thing to avoid.
-- **JWT service-to-service auth via JWKS (asymmetric), not a shared secret.** Better Auth signs
-  with Ed25519; the API verifies against `/api/auth/jwks` with no secret in common and no
-  callback to Next.js per request.
 - **pgvector instead of a dedicated vector database.** One database to operate and back up
   instead of two. HNSW indexing trades a small amount of recall for speed — with the chunk
   volumes here, a sequential scan would also work; the index is the choice that scales.
@@ -153,6 +142,12 @@ Terraform/Pulumi, Turborepo/Nx, Redis/BullMQ, Kubernetes, microservices beyond t
 here, GraphQL, a dedicated vector database, and a component library (UI primitives are
 hand-built). Each was left out because the project's actual scope didn't justify it yet — not
 because it's never the right call.
+
+**Login/authentication.** The app previously had Google OAuth via Better Auth; it was removed to
+keep the project runnable without external OAuth credentials, and the app now operates as a
+single fixed user (`apps/api/src/lib/require-auth.ts`). Reintroducing real auth (Better Auth or
+otherwise) would mean restoring per-user scoping on top of the existing `userId`-based queries in
+`apps/api`.
 
 ## License
 

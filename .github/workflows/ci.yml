@@ -7,21 +7,16 @@ on:
 
 env:
   # Real-shaped but fake values — nothing in lint/typecheck/build/unit-test
-  # actually calls Google/AWS/Anthropic/Voyage, but each workspace's Zod env
+  # actually calls AWS/Anthropic/Voyage, but each workspace's Zod env
   # schema (see lib/env.ts) requires these to be present and non-empty just
   # to construct the app, matching local .env.example placeholders.
   DATABASE_URL: postgresql://docpilot:docpilot_ci_password@localhost:5432/docpilot
-  AUTH_JWKS_URL: http://localhost:3000/api/auth/jwks
   AWS_REGION: us-east-1
   AWS_ACCESS_KEY_ID: ci-placeholder-access-key-id
   AWS_SECRET_ACCESS_KEY: ci-placeholder-secret-access-key
   S3_BUCKET_NAME: docpilot-ci-placeholder
   ANTHROPIC_API_KEY: sk-ant-ci-placeholder-key
   VOYAGE_API_KEY: pa-ci-placeholder-key
-  BETTER_AUTH_SECRET: ci-placeholder-secret-not-used-for-real-auth
-  BETTER_AUTH_URL: http://localhost:3000
-  GOOGLE_CLIENT_ID: ci-placeholder-client-id.apps.googleusercontent.com
-  GOOGLE_CLIENT_SECRET: ci-placeholder-client-secret
 
 jobs:
   lint:
@@ -113,7 +108,6 @@ jobs:
       - run: npm ci
       - run: npx playwright install chromium --with-deps
         working-directory: apps/web
-      - run: npm run db:migrate --workspace=@docpilot/web
       - run: npm run test:e2e --workspace=@docpilot/web
         env:
           CI: true

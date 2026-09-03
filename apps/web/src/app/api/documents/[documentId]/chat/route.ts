@@ -1,14 +1,11 @@
-import { requireSession } from '@/features/auth/lib/session';
 import { apiFetch } from '@/lib/api-client';
 
 // Streaming can't go through a Server Action (no token-by-token delivery), so
-// this Route Handler proxies apps/api's stream through to the browser — the
-// browser never holds the JWT that authenticates to apps/api.
+// this Route Handler proxies apps/api's stream through to the browser.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ documentId: string }> },
 ) {
-  await requireSession();
   const { documentId } = await params;
   const body = await request.text();
 

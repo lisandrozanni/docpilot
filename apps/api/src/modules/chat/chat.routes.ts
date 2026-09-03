@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { requireAuth, getUserId } from '../../lib/require-auth.js';
+import { getUserId } from '../../lib/require-auth.js';
 import { logger } from '../../lib/logger.js';
 import * as chatService from './chat.service.js';
 import {
@@ -9,8 +9,6 @@ import {
 } from './chat.schemas.js';
 
 export async function chatRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', requireAuth);
-
   app.post('/documents/:documentId/chat', async (request, reply) => {
     const params = documentIdParamsSchema.parse(request.params);
     const body = askQuestionBodySchema.parse(request.body);
