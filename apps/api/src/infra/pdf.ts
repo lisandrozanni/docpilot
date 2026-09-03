@@ -1,26 +1,9 @@
-import { PDFParse } from 'pdf-parse';
+import { env } from '../lib/env.js';
+import * as real from './pdf.real.js';
+import * as mock from './pdf.mock.js';
 
-export interface ExtractedPage {
-  pageNumber: number;
-  text: string;
-}
+export type { ExtractedPage, ExtractedPdf } from './pdf.real.js';
 
-export interface ExtractedPdf {
-  pageCount: number;
-  pages: ExtractedPage[];
-}
+const impl = env.MOCK_EXTERNAL_SERVICES ? mock : real;
 
-export async function extractPdfText(buffer: Buffer): Promise<ExtractedPdf> {
-  const parser = new PDFParse({ data: buffer });
-
-  try {
-    const result = await parser.getText();
-
-    return {
-      pageCount: result.total,
-      pages: result.pages.map((page) => ({ pageNumber: page.num, text: page.text })),
-    };
-  } finally {
-    await parser.destroy();
-  }
-}
+export const extractPdfText = impl.extractPdfText;

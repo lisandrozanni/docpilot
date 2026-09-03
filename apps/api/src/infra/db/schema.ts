@@ -13,15 +13,6 @@ import {
 // Voyage is the provider they recommend in their own docs.
 export const EMBEDDING_DIMENSIONS = 1024;
 
-// Mirrors Better Auth's "user" table (owned and migrated by apps/web) so Drizzle
-// can build the FK below. apps/api never migrates this table — it's a read-only
-// reference to a table that lives in the same Postgres database but a different
-// workspace's schema. Identity itself (who a JWT's subject claim refers to) is
-// verified against Better Auth's JWKS endpoint, not by querying this table.
-export const authUserMirror = pgTable('user', {
-  id: text('id').primaryKey(),
-});
-
 export const documentStatus = ['pending', 'processing', 'ready', 'failed'] as const;
 export type DocumentStatus = (typeof documentStatus)[number];
 
@@ -29,9 +20,10 @@ export const documents = pgTable(
   'documents',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => authUserMirror.id, { onDelete: 'cascade' }),
+    // No FK: there is no login, so userId is not backed by a users table —
+    // see apps/api/src/lib/require-auth.ts, which always returns the same
+    // fixed id.
+    userId: text('user_id').notNull(),
     filename: text('filename').notNull(),
     s3Key: text('s3_key').notNull().unique(),
     sizeBytes: integer('size_bytes').notNull(),
@@ -84,9 +76,7 @@ export const conversations = pgTable(
   'conversations',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => authUserMirror.id, { onDelete: 'cascade' }),
+    userId: text('user_id').notNull(),
     documentId: uuid('document_id')
       .notNull()
       .references(() => documents.id, { onDelete: 'cascade' }),
