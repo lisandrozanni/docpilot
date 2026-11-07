@@ -9,8 +9,7 @@ import {
   vector,
 } from 'drizzle-orm/pg-core';
 
-// voyage-3.5 (Voyage AI) — Anthropic has no first-party embeddings API, and
-// Voyage is the provider they recommend in their own docs.
+// voyage-3.5 (Voyage AI) produces 1024-dimensional embeddings.
 export const EMBEDDING_DIMENSIONS = 1024;
 
 // Mirrors Better Auth's "user" table (owned and migrated by apps/web) so Drizzle

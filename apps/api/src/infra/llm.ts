@@ -1,35 +1,34 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
 import { env } from '../lib/env.js';
 
-const MODEL = 'claude-haiku-5-5';
+const MODEL = 'gemini-3.5-flash-lite';
 const MAX_OUTPUT_TOKENS = 4096;
 
-const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+const gemini = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
 
-// System prompt goes first and is marked cacheable: it's the stable prefix
-// (instructions + full document context) that doesn't change between turns of
-// the same conversation. History and the new question are volatile and go
-// after — anything after the cached prefix can change without invalidating it,
-// but changing the prefix itself invalidates everything that follows it.
-export function streamAnswer(
+export async function* streamAnswer(
   documentContext: string,
   history: ChatMessage[],
 ): AsyncIterable<string> {
-  const systemPrompt = buildSystemPrompt(documentContext);
-
-  const stream = anthropic.messages.stream({
+  const stream = await gemini.models.generateContentStream({
     model: MODEL,
-    max_tokens: MAX_OUTPUT_TOKENS,
-    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-    messages: history.map((message) => ({ role: message.role, content: message.content })),
+    config: {
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
+      systemInstruction: buildSystemPrompt(documentContext),
+    },
+    contents: history.map((message) => ({
+      role: message.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: message.content }],
+    })),
   });
-
-  return textDeltas(stream);
+  for await (const chunk of stream) {
+    if (chunk.text) yield chunk.text;
+  }
 }
 
 function buildSystemPrompt(documentContext: string): string {
@@ -42,12 +41,4 @@ function buildSystemPrompt(documentContext: string): string {
     documentContext,
     '--- END DOCUMENT CONTENT ---',
   ].join('\n');
-}
-
-async function* textDeltas(stream: ReturnType<typeof anthropic.messages.stream>) {
-  for await (const event of stream) {
-    if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-      yield event.delta.text;
-    }
-  }
 }

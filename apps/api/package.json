@@ -18,10 +18,10 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.117.1",
     "@aws-sdk/client-s3": "^3.1112.0",
     "@aws-sdk/s3-request-presigner": "^3.1112.0",
     "@docpilot/shared": "*",
+    "@google/genai": "^3.0.0",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.12.0",
     "jose": "^6.2.9",

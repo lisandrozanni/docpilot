@@ -6,7 +6,7 @@ non-obvious choice below has a reason and a trade-off attached, including what w
 left out.
 
 **Stack:** Next.js 16 (BFF) · Fastify (API) · PostgreSQL 17 + pgvector · Drizzle ORM ·
-Better Auth (Google OAuth) · Claude Haiku 5.5 (streaming Q&A) · Voyage AI (embeddings) · AWS S3
+Better Auth (Google OAuth) · Gemini 3.5 Flash-Lite (streaming Q&A) · Voyage AI (embeddings) · AWS S3
 (presigned uploads).
 
 ## How it works
@@ -16,7 +16,7 @@ Browser ──Server Actions/fetch──▶ Next.js (BFF) ──JWT (JWKS)──
                                                                      │
                                           ┌──────────────┬──────────┼──────────┐
                                           ▼              ▼          ▼          ▼
-                                     PostgreSQL         S3     Claude API  Voyage AI
+                                     PostgreSQL         S3     Gemini API  Voyage AI
                                      + pgvector
 ```
 
@@ -28,14 +28,12 @@ Browser ──Server Actions/fetch──▶ Next.js (BFF) ──JWT (JWKS)──
 - **RAG, not "paste the whole document in."** Each PDF is chunked, embedded with Voyage AI, and
   stored in pgvector. A question retrieves the top-K most relevant chunks (cosine similarity,
   HNSW index) instead of stuffing the entire document into every prompt.
-- **Answers stream.** The chat Route Handler forwards Claude's stream token-by-token over SSE;
-  the system prompt (document context) is marked for prompt caching since it's the stable prefix
-  across a conversation's turns.
+- **Answers stream.** The chat Route Handler forwards Gemini's stream token-by-token over SSE.
 
 ## Getting started
 
 **Prerequisites:** Node 22+ (see `.nvmrc`), Docker, and API keys for Google OAuth, AWS S3,
-Anthropic, and Voyage AI (see [What you'll need](#what-youll-need) below).
+Gemini, and Voyage AI (see [What you'll need](#what-youll-need) below).
 
 ```bash
 git clone git@github.com:lisandrozanni/docpilot.git
@@ -67,7 +65,7 @@ Open `http://localhost:3000` — you'll be redirected to `/login`.
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`                      | Google Cloud Console → APIs & Services → Credentials → OAuth client ID (type: Web application). Redirect URI: `http://localhost:3000/api/auth/callback/google`            |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `S3_BUCKET_NAME` | An S3 bucket + an IAM user scoped to `s3:PutObject`/`s3:GetObject` on that bucket only (see `docker-compose.yml`'s neighbor, `apps/api/.env.example`, for the full shape) |
-| `ANTHROPIC_API_KEY`                                              | [console.anthropic.com](https://console.anthropic.com) → API Keys                                                                                                         |
+| `GEMINI_API_KEY`                                                 | [Google AI Studio](https://aistudio.google.com/api-keys) → Create API key                                                                                                 |
 | `VOYAGE_API_KEY`                                                 | [voyageai.com](https://www.voyageai.com) → Dashboard → API Keys                                                                                                           |
 | `BETTER_AUTH_SECRET`                                             | Any long random string, e.g. `openssl rand -base64 32`                                                                                                                    |
 
@@ -88,7 +86,7 @@ docpilot/
 │   └── api/                 Fastify — business logic, orchestration
 │       └── src/
 │           ├── modules/     routes → service → repository, per domain
-│           ├── infra/       db, s3, llm (Claude), embeddings (Voyage), pdf chunking
+│           ├── infra/       db, s3, llm (Gemini), embeddings (Voyage), pdf chunking
 │           └── lib/         env, errors, logger, auth (JWKS verification)
 ├── packages/
 │   └── shared/               Zod schemas shared between web, api, and RHF forms
@@ -114,7 +112,7 @@ npm run test:e2e --workspace=@docpilot/web           # Playwright, real browser
   applies actual migrations against it; this is what catches a broken constraint or index that a
   mocked repository never would.
 - **E2E** — Playwright against a real browser, scoped to what's verifiable without live
-  Google/AWS/Anthropic/Voyage credentials (the unauthenticated redirect, layout, and error
+  Google/AWS/Gemini/Voyage credentials (the unauthenticated redirect, layout, and error
   states).
 
 CI (`.github/workflows/ci.yml`) runs lint/typecheck/unit in parallel, then integration, then a

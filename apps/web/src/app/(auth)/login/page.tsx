@@ -14,7 +14,7 @@ export default async function LoginPage() {
       <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-8 text-center shadow-sm">
         <h1 className="text-xl font-semibold text-text">Sign in to DocPilot</h1>
         <p className="mt-2 text-sm text-text-muted">
-          Ask questions about your documents, powered by Claude.
+          Ask questions about your documents, powered by Gemini.
         </p>
         <div className="mt-6">
           <GoogleSignInButton />

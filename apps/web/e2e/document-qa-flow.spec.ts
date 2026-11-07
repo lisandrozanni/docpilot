@@ -4,7 +4,7 @@ import { test } from '@playwright/test';
 // upload a PDF, watch it move from "processing" to "ready" via polling,
 // ask a question, and see a streamed answer. This can't run today because
 // it needs four real external services simultaneously — Google OAuth, AWS
-// S3, Voyage AI, and Anthropic — and only placeholder credentials are
+// S3, Voyage AI, and Gemini — and only placeholder credentials are
 // configured for local development (see each Etapa's .env.example).
 //
 // Once real credentials are available, this becomes: use Playwright's
