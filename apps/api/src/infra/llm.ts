@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { env } from '../lib/env.js';
 
-const MODEL = 'claude-opus-5';
+const MODEL = 'claude-haiku-5-5';
 const MAX_OUTPUT_TOKENS = 4096;
 
 const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });

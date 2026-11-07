@@ -6,7 +6,7 @@ non-obvious choice below has a reason and a trade-off attached, including what w
 left out.
 
 **Stack:** Next.js 16 (BFF) · Fastify (API) · PostgreSQL 17 + pgvector · Drizzle ORM ·
-Better Auth (Google OAuth) · Claude Opus 5 (streaming Q&A) · Voyage AI (embeddings) · AWS S3
+Better Auth (Google OAuth) · Claude Haiku 5.5 (streaming Q&A) · Voyage AI (embeddings) · AWS S3
 (presigned uploads).
 
 ## How it works
