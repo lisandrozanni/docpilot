@@ -13,7 +13,7 @@ export async function requestUpload(input: RequestUploadInput) {
   const id = randomUUID();
   const s3Key = buildS3Key(input.userId, id);
 
-  const document = await documentsRepository.insertDocument({
+  await documentsRepository.insertDocument({
     id,
     userId: input.userId,
     filename: input.filename,
@@ -23,7 +23,7 @@ export async function requestUpload(input: RequestUploadInput) {
 
   const uploadUrl = await createPresignedUploadUrl(s3Key, input.contentType);
 
-  return { document, uploadUrl };
+  return { documentId: id, uploadUrl };
 }
 
 export async function confirmUpload(id: string, userId: string) {
