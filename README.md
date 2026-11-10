@@ -1,157 +1,123 @@
 # DocPilot
 
-Upload a PDF, ask questions about it, get streamed answers grounded in the document's actual
-content. Built as a portfolio project to be defensible in technical interviews — every
-non-obvious choice below has a reason and a trade-off attached, including what was deliberately
-left out.
+Upload a PDF, ask questions, and receive streamed answers grounded in its content. DocPilot
+uses retrieval-augmented generation (RAG) to find relevant document fragments before calling
+Gemini.
 
-**Stack:** Next.js 16 (BFF) · Fastify (API) · PostgreSQL 17 + pgvector · Drizzle ORM ·
-Better Auth (Google OAuth) · Gemini 3.5 Flash-Lite (streaming Q&A) · Voyage AI (embeddings) · AWS S3
-(presigned uploads).
+## Technologies
 
-## How it works
+| Area           | Technologies                                                       |
+| -------------- | ------------------------------------------------------------------ |
+| Web            | Next.js 16, React 19, TypeScript, Tailwind CSS, TanStack Query     |
+| API            | Fastify, TypeScript, Zod                                           |
+| Database       | PostgreSQL 17, pgvector, Drizzle ORM                               |
+| Authentication | Better Auth, Google OAuth, JWT and JWKS                            |
+| AI             | Gemini 3.5 Flash-Lite, Voyage AI embeddings                        |
+| File storage   | AWS S3, presigned uploads                                          |
+| Tooling        | Docker Compose, npm workspaces, Vitest, Playwright, GitHub Actions |
 
-```
-Browser ──Server Actions/fetch──▶ Next.js (BFF) ──JWT (JWKS)──▶ Fastify API
-                                                                     │
-                                          ┌──────────────┬──────────┼──────────┐
-                                          ▼              ▼          ▼          ▼
-                                     PostgreSQL         S3     Gemini API  Voyage AI
-                                     + pgvector
-```
+The Next.js app manages sessions and forwards authenticated requests to the Fastify API. PDFs
+are uploaded directly to S3, split into chunks, and indexed in pgvector. The API retrieves
+relevant chunks and streams Gemini's answer back to the browser.
 
-- **Next.js is a BFF, not just a frontend.** It owns the session (Better Auth) and proxies
-  authenticated calls to the API — the browser never talks to Fastify or S3 directly, and never
-  holds AWS credentials.
-- **Uploads go straight to S3.** The API only issues a presigned PUT URL; the file bytes never
-  pass through either server.
-- **RAG, not "paste the whole document in."** Each PDF is chunked, embedded with Voyage AI, and
-  stored in pgvector. A question retrieves the top-K most relevant chunks (cosine similarity,
-  HNSW index) instead of stuffing the entire document into every prompt.
-- **Answers stream.** The chat Route Handler forwards Gemini's stream token-by-token over SSE.
+## Run locally
 
-## Getting started
+**Requirements:** Node.js 22 or newer, npm, Docker, and credentials for Google OAuth, AWS S3,
+Gemini, and Voyage AI. These services may have usage limits or charges.
 
-**Prerequisites:** Node 22+ (see `.nvmrc`), Docker, and API keys for Google OAuth, AWS S3,
-Gemini, and Voyage AI (see [What you'll need](#what-youll-need) below).
+1. Install dependencies and build the shared package:
+
+   ```bash
+   git clone git@github.com:lisandrozanni/docpilot.git
+   cd docpilot
+   nvm use 22 # if you use nvm
+   npm ci
+   npm run build --workspace=@docpilot/shared
+   ```
+
+2. Start Docker Desktop, then start the database and enable pgvector:
+
+   ```bash
+   docker compose up -d
+   docker compose ps # wait until postgres is healthy
+   docker compose exec postgres psql -U docpilot -d docpilot -c "CREATE EXTENSION IF NOT EXISTS vector;"
+   ```
+
+3. Create the environment files if they do not already exist, then fill in the values below:
+
+   ```bash
+   cp -n apps/api/.env.example apps/api/.env
+   cp -n apps/web/.env.example apps/web/.env
+   ```
+
+   | File | Variables                                                                    | Local value or source                                                    |
+   | ---- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+   | Both | `DATABASE_URL`                                                               | `postgresql://docpilot:docpilot_dev_password@localhost:5432/docpilot`    |
+   | API  | `AUTH_JWKS_URL`                                                              | `http://localhost:3000/api/auth/jwks`                                    |
+   | API  | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME` | Your bucket region, name, and IAM credentials                            |
+   | API  | `GEMINI_API_KEY`                                                             | Create a key in [Google AI Studio](https://aistudio.google.com/api-keys) |
+   | API  | `VOYAGE_API_KEY`                                                             | Create a key in the [Voyage AI dashboard](https://www.voyageai.com/)     |
+   | Web  | `BETTER_AUTH_URL`, `API_URL`                                                 | `http://localhost:3000`, `http://localhost:3001`                         |
+   | Web  | `BETTER_AUTH_SECRET`                                                         | Generate once with `openssl rand -base64 32` and keep it stable          |
+   | Web  | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                                   | A Google OAuth web application client                                    |
+
+   In Google Cloud, set the authorized redirect URI to
+   `http://localhost:3000/api/auth/callback/google`. If the consent screen is in testing mode,
+   add your Google account as a test user. Allow the S3 IAM user `s3:PutObject` and
+   `s3:GetObject` for the bucket's objects. Configure the bucket's CORS for local uploads:
+
+   ```json
+   [
+     {
+       "AllowedOrigins": ["http://localhost:3000"],
+       "AllowedMethods": ["PUT"],
+       "AllowedHeaders": ["*"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+
+4. Apply migrations **in this order**: the API tables reference the user table created by web.
+
+   ```bash
+   npm run db:migrate --workspace=@docpilot/web
+   npm run db:migrate --workspace=@docpilot/api
+   ```
+
+5. Start the API and web in separate terminals from the project root:
+
+   ```bash
+   npm run dev --workspace=@docpilot/api # http://localhost:3001
+   ```
+
+   ```bash
+   npm run dev --workspace=@docpilot/web # http://localhost:3000
+   ```
+
+   Open [localhost:3000](http://localhost:3000), sign in with Google, and upload a PDF of up to
+   10 MB. [localhost:3001/health](http://localhost:3001/health) checks the API and database.
+
+## Troubleshooting
+
+- **`relation "user" does not exist`:** verify that both apps use the intended `DATABASE_URL`
+  and run the web migration before the API migration. If the migration is already recorded but
+  the table is missing, the database is inconsistent; inspect or restore it before changing the
+  migration history. Existing documents may reference missing users.
+- **`Failed to decrypt private key`:** the signing key was encrypted with a different
+  `BETTER_AUTH_SECRET`. Restore the original secret if possible. Otherwise rotate the stored
+  JWKS key so Better Auth can create a new one; existing signed tokens may need to be renewed.
+- **S3 upload fails:** check the bucket region, IAM permissions, and CORS origin.
+- **The app starts but AI requests fail:** check the Gemini and Voyage keys, model access,
+  account quotas, and API logs.
+
+## Tests
 
 ```bash
-git clone git@github.com:lisandrozanni/docpilot.git
-cd docpilot
-npm install
-
-# Start PostgreSQL (pgvector-enabled image)
-docker compose up -d
-
-# Configure each workspace's environment
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
-# fill in both .env files — see the table below for where each key comes from
-
-# Apply database migrations (api owns documents/chunks, web owns auth tables)
-npm run db:migrate --workspace=@docpilot/api
-npm run db:migrate --workspace=@docpilot/web
-
-# Run both services
-npm run dev --workspace=@docpilot/api   # http://localhost:3001
-npm run dev --workspace=@docpilot/web   # http://localhost:3000
+npm run test                                       # unit tests
+npm run test:integration --workspace=@docpilot/api # requires Docker
+npm run test:e2e --workspace=@docpilot/web          # requires Playwright browsers
 ```
-
-Open `http://localhost:3000` — you'll be redirected to `/login`.
-
-### What you'll need
-
-| Variable                                                         | Where to get it                                                                                                                                                           |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`                      | Google Cloud Console → APIs & Services → Credentials → OAuth client ID (type: Web application). Redirect URI: `http://localhost:3000/api/auth/callback/google`            |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `S3_BUCKET_NAME` | An S3 bucket + an IAM user scoped to `s3:PutObject`/`s3:GetObject` on that bucket only (see `docker-compose.yml`'s neighbor, `apps/api/.env.example`, for the full shape) |
-| `GEMINI_API_KEY`                                                 | [Google AI Studio](https://aistudio.google.com/api-keys) → Create API key                                                                                                 |
-| `VOYAGE_API_KEY`                                                 | [voyageai.com](https://www.voyageai.com) → Dashboard → API Keys                                                                                                           |
-| `BETTER_AUTH_SECRET`                                             | Any long random string, e.g. `openssl rand -base64 32`                                                                                                                    |
-
-Every one of these is validated at boot with a Zod schema (`lib/env.ts` in each workspace) — the
-app fails fast with a clear error instead of a confusing runtime crash three requests in.
-
-## Project structure
-
-```
-docpilot/
-├── apps/
-│   ├── web/                 Next.js 16 (App Router) — BFF, session, UI
-│   │   └── src/
-│   │       ├── app/         routes only — (auth)/login, (app)/documents, api/*
-│   │       ├── features/    feature folders: auth, documents, chat
-│   │       ├── components/  shared UI primitives + providers
-│   │       └── lib/         auth, db client (Better Auth's own schema), api-client
-│   └── api/                 Fastify — business logic, orchestration
-│       └── src/
-│           ├── modules/     routes → service → repository, per domain
-│           ├── infra/       db, s3, llm (Gemini), embeddings (Voyage), pdf chunking
-│           └── lib/         env, errors, logger, auth (JWKS verification)
-├── packages/
-│   └── shared/               Zod schemas shared between web, api, and RHF forms
-├── docker-compose.yml         Postgres 17 + pgvector, dev only
-└── .github/workflows/ci.yml   lint/typecheck/unit → integration → build → e2e
-```
-
-Each feature folder owns its `components/`, `hooks/`, `actions.ts` (Server Actions), and
-`schemas.ts` — no barrel files, since re-exporting everything through an `index.ts` defeats
-tree-shaking. The API mirrors the same idea with `routes → service → repository` layering per
-module, so business logic is testable without a database.
-
-## Testing
-
-```bash
-npm run test                                        # unit tests, all workspaces
-npm run test:integration --workspace=@docpilot/api   # Testcontainers: real ephemeral Postgres
-npm run test:e2e --workspace=@docpilot/web           # Playwright, real browser
-```
-
-- **Unit** — pure logic (chunking, Zod schemas) and components (Testing Library), no I/O.
-- **Integration** — Testcontainers boots a real `pgvector/pgvector:pg17` container per run and
-  applies actual migrations against it; this is what catches a broken constraint or index that a
-  mocked repository never would.
-- **E2E** — Playwright against a real browser, scoped to what's verifiable without live
-  Google/AWS/Gemini/Voyage credentials (the unauthenticated redirect, layout, and error
-  states).
-
-CI (`.github/workflows/ci.yml`) runs lint/typecheck/unit in parallel, then integration, then a
-production build, then e2e — each stage only starts once the ones it depends on are green.
-
-## Notable architectural decisions
-
-A few choices worth being able to defend, briefly:
-
-- **A separate Fastify API instead of doing everything in Next.js Route Handlers.** PDF
-  processing and embedding generation are background work that doesn't fit request/response —
-  a dedicated service can run them as in-process async jobs. For a pure MVP, Route Handlers
-  would have been less infrastructure; the split is justified here by that async work and by
-  demonstrating a layered backend, not by dogma.
-- **Drizzle over Prisma.** Drizzle's SQL is close to 1:1 with what actually runs — the explicit
-  goal was learning real PostgreSQL, not having an ORM DSL abstract it away.
-- **Two separate Postgres schemas, two Drizzle clients.** Better Auth (in `apps/web`) owns
-  `user`/`session`/`account`/`verification` and migrates them independently from `apps/api`'s
-  `documents`/`document_chunks`. `apps/api` holds a read-only "mirror" table just to build its
-  foreign key — it never migrates the real one. Coupling two workspaces' migration histories to
-  the same table was the thing to avoid.
-- **JWT service-to-service auth via JWKS (asymmetric), not a shared secret.** Better Auth signs
-  with Ed25519; the API verifies against `/api/auth/jwks` with no secret in common and no
-  callback to Next.js per request.
-- **pgvector instead of a dedicated vector database.** One database to operate and back up
-  instead of two. HNSW indexing trades a small amount of recall for speed — with the chunk
-  volumes here, a sequential scan would also work; the index is the choice that scales.
-- **RAG instead of putting the whole document in context.** Cheaper, faster, and avoids models
-  losing track of content in very long contexts. For small documents, full-context with prompt
-  caching can actually beat RAG — that trade-off is real and worth stating out loud, not just
-  reaching for RAG by default.
-
-### Deliberately not included
-
-Terraform/Pulumi, Turborepo/Nx, Redis/BullMQ, Kubernetes, microservices beyond the two services
-here, GraphQL, a dedicated vector database, and a component library (UI primitives are
-hand-built). Each was left out because the project's actual scope didn't justify it yet — not
-because it's never the right call.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+[MIT](./LICENSE)
