@@ -8,7 +8,7 @@ test.describe('unauthenticated access', () => {
 
   test('login page renders the Google sign-in option', async ({ page }) => {
     await page.goto('/login');
-    await expect(page.getByRole('heading', { name: 'Sign in to DocPilot' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: "Let's get started." })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeVisible();
   });
 

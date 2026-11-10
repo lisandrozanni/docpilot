@@ -56,6 +56,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - run: npm run build --workspace=@docpilot/shared
       - run: npm run test
 
   integration-tests:
@@ -67,6 +68,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - run: npm run build --workspace=@docpilot/shared
       # Testcontainers starts its own ephemeral Postgres container per run —
       # no `services:` block needed here, unlike a typical GitHub Actions
       # Postgres setup. The runner's Docker daemon (pre-installed on
@@ -111,6 +113,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - run: npm run build --workspace=@docpilot/shared
       - run: npx playwright install chromium --with-deps
         working-directory: apps/web
       - run: npm run db:migrate --workspace=@docpilot/web
