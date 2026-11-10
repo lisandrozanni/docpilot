@@ -22,7 +22,7 @@ export function DocumentChat({
   });
 
   return (
-    <div className="flex h-[32rem] flex-col rounded-lg border border-border bg-background p-4">
+    <div className="flex h-[32rem] flex-col rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-6">
       <MessageList messages={messages} />
       {error && <p className="mb-2 text-sm text-danger">{error}</p>}
       <ChatInput onSubmit={(question) => void ask(question)} disabled={isStreaming} />

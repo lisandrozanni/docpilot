@@ -2,22 +2,22 @@
 
 @theme {
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
-
-  --color-primary: #0d9488;
-  --color-primary-hover: #0f766e;
-  --color-accent: #ea580c;
-  --color-accent-hover: #c2410c;
-  --color-background: #f0fdfa;
+  --color-primary: #315c50;
+  --color-primary-hover: #23473d;
+  --color-primary-soft: #e8f0eb;
+  --color-accent: #a75a3a;
+  --color-accent-hover: #85442c;
+  --color-background: #f7f7f2;
   --color-surface: #ffffff;
-  --color-border: #d1e7e3;
-  --color-text: #134e4a;
-  --color-text-muted: #5f7d79;
-  --color-danger: #dc2626;
-  --color-success: #16a34a;
-
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-
+  --color-surface-soft: #f0f3ed;
+  --color-border: #dde4dc;
+  --color-text: #243a32;
+  --color-text-muted: #61736a;
+  --color-danger: #ad403c;
+  --color-success: #315c50;
+  --color-on-primary: #ffffff;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -25,18 +25,20 @@
   * {
     border-color: var(--color-border);
   }
-
   body {
     background-color: var(--color-background);
     color: var(--color-text);
     font-family: var(--font-sans);
   }
-
   :focus-visible {
     outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
+    outline-offset: 3px;
   }
-
+  button,
+  a,
+  input[type='file'] {
+    cursor: pointer;
+  }
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

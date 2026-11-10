@@ -8,6 +8,7 @@ import { uploadFormSchema, type UploadFormValues } from '../schemas';
 import { requestUpload, confirmUpload } from '../actions';
 import { documentsQueryKey } from '../hooks/use-documents';
 import { Button } from '@/components/ui/button';
+import { UploadIcon } from '@/components/ui/icons';
 
 type UploadState = 'idle' | 'uploading' | 'confirming' | 'error';
 
@@ -63,27 +64,43 @@ export function UploadDropzone() {
   return (
     <form
       onSubmit={(event) => void onSubmit(event)}
-      className="rounded-lg border border-dashed border-border bg-surface p-6"
+      className="rounded-2xl border border-border bg-surface p-5 sm:p-6"
     >
-      <label htmlFor="pdf-upload" className="block text-sm font-medium text-text">
+      <div className="mb-5 flex items-center gap-3">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-soft text-primary">
+          <UploadIcon className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="font-semibold text-text">Add a document</h2>
+          <p className="mt-0.5 text-xs text-text-muted">Choose a PDF up to 10 MB.</p>
+        </div>
+      </div>
+      <label htmlFor="pdf-upload" className="sr-only">
         Upload a PDF
       </label>
-      <input
-        key={inputKey}
-        id="pdf-upload"
-        type="file"
-        accept="application/pdf"
-        disabled={isBusy}
-        aria-invalid={errors.file ? true : undefined}
-        aria-describedby={errors.file ? 'pdf-upload-error' : undefined}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) {
-            setValue('file', file, { shouldValidate: true });
-          }
-        }}
-        className="mt-2 block w-full text-sm text-text-muted file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-      />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <input
+          key={inputKey}
+          id="pdf-upload"
+          type="file"
+          accept="application/pdf"
+          disabled={isBusy}
+          aria-invalid={errors.file ? true : undefined}
+          aria-describedby={errors.file ? 'pdf-upload-error' : undefined}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) {
+              setValue('file', file, { shouldValidate: true });
+            }
+          }}
+          className="block h-11 min-w-0 w-full rounded-xl border border-dashed border-border bg-background p-1 text-xs text-text-muted file:mr-3 file:h-full file:cursor-pointer file:rounded-md file:border-0 file:bg-primary-soft file:px-3 file:py-0 file:text-xs file:font-semibold file:text-primary hover:file:bg-border disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <Button className="sm:shrink-0" type="submit" disabled={isBusy}>
+          {state === 'uploading' && 'Uploading…'}
+          {state === 'confirming' && 'Processing…'}
+          {(state === 'idle' || state === 'error') && 'Upload'}
+        </Button>
+      </div>
       {errors.file && (
         <p id="pdf-upload-error" className="mt-2 text-sm text-danger">
           {errors.file.message}
@@ -94,13 +111,6 @@ export function UploadDropzone() {
           {errorMessage}
         </p>
       )}
-      <div className="mt-4">
-        <Button type="submit" disabled={isBusy}>
-          {state === 'uploading' && 'Uploading…'}
-          {state === 'confirming' && 'Processing…'}
-          {(state === 'idle' || state === 'error') && 'Upload'}
-        </Button>
-      </div>
     </form>
   );
 }

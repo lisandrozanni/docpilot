@@ -47,14 +47,32 @@ describe('DocumentCard', () => {
     expect(screen.getByText(label)).toBeInTheDocument();
   });
 
-  it('calls onDelete when the delete button is clicked', async () => {
+  it('only calls onDelete after confirmation', async () => {
     const onDelete = vi.fn();
     const user = userEvent.setup();
 
     render(<DocumentCard document={makeDocument()} onDelete={onDelete} isDeleting={false} />);
     await user.click(screen.getByRole('button', { name: 'Delete report.pdf' }));
 
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(screen.getByRole('group', { name: 'Delete report.pdf?' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Confirm delete' }));
     expect(onDelete).toHaveBeenCalledOnce();
+  });
+
+  it('cancels deletion and returns focus to the delete button', async () => {
+    const onDelete = vi.fn();
+    const user = userEvent.setup();
+    render(<DocumentCard document={makeDocument()} onDelete={onDelete} isDeleting={false} />);
+
+    const deleteButton = screen.getByRole('button', { name: 'Delete report.pdf' });
+    await user.click(deleteButton);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(onDelete).not.toHaveBeenCalled();
+    expect(screen.queryByRole('group', { name: 'Delete report.pdf?' })).not.toBeInTheDocument();
+    expect(deleteButton).toHaveFocus();
   });
 
   it('disables the delete button and shows a busy label while deleting', () => {

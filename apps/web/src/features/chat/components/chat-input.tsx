@@ -39,7 +39,7 @@ export function ChatInput({ onSubmit, disabled }: ChatInputProps) {
           disabled={disabled}
           aria-invalid={errors.question ? true : undefined}
           aria-describedby={errors.question ? 'chat-question-error' : undefined}
-          className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm text-text disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-w-0 flex-1 rounded-xl border border-border bg-background px-4 py-3 text-sm text-text disabled:cursor-not-allowed disabled:opacity-50"
           {...register('question')}
         />
         <Button type="submit" disabled={disabled}>

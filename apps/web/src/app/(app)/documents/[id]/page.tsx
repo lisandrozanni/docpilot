@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { apiFetch } from '@/lib/api-client';
 
@@ -32,8 +33,18 @@ export default async function DocumentDetailPage({ params }: { params: Promise<{
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-text">{document.filename}</h1>
-
+      <Link
+        href="/documents"
+        className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-text-muted transition-colors hover:text-primary"
+      >
+        ← All documents
+      </Link>
+      <p className="mt-5 text-xs font-bold tracking-[0.16em] text-primary uppercase">
+        Document conversation
+      </p>
+      <h1 className="mt-3 break-words text-2xl font-semibold tracking-tight text-text sm:text-3xl">
+        {document.filename}
+      </h1>
       {document.status === 'ready' ? (
         <div className="mt-6">
           <DocumentChat
