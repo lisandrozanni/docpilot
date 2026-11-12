@@ -28,13 +28,9 @@ export default async function LoginPage() {
               Find the answers you need in your documents, without reading between every line.
             </p>
           </div>
-          <p className="text-xs text-on-primary/70">A quieter way to work with your documents.</p>
         </div>
         <div className="flex flex-col justify-center p-8 sm:p-12 lg:p-16">
-          <p className="text-xs font-bold tracking-[0.16em] text-primary uppercase">
-            Welcome to DocPilot
-          </p>
-          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-text">
+          <h2 className="text-3xl font-semibold tracking-tight text-text">
             Let&apos;s get started<span className="text-accent">.</span>
           </h2>
           <p className="mt-3 text-sm leading-6 text-text-muted">
@@ -42,9 +38,6 @@ export default async function LoginPage() {
           </p>
           <div className="mt-8">
             <GoogleSignInButton />
-          </div>
-          <div className="mt-8 border-t border-border pt-6 text-xs leading-5 text-text-muted">
-            One workspace for your documents and the questions that matter.
           </div>
         </div>
       </div>
