@@ -4,6 +4,12 @@ Upload a PDF, ask questions, and receive streamed answers grounded in its conten
 uses retrieval-augmented generation (RAG) to find relevant document fragments before calling
 Gemini.
 
+### 🎥 Live Demo
+
+[Watch the Demo on Loom](https://www.loom.com/share/38bcd7951b794d26b463b20436ca35c1)
+
+> Currently in beta. Deployment on Vercel coming soon.
+
 ## Technologies
 
 | Area           | Technologies                                                       |
